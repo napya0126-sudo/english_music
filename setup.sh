@@ -129,9 +129,26 @@ fi
 # Applio の Python 依存関係インストール
 cd "$APPLIO_DIR"
 APPLIO_VENV="$HOME/.venvs/applio"
+
+# pyenv の Python 3.10 を明示的に使う（システム Python 3.14+ だと
+# PyO3 / tokenizers 等が非対応でビルド警告が出るため）
+PYTHON_310="$HOME/.pyenv/versions/$PYTHON_VERSION/bin/python"
+if [ ! -f "$PYTHON_310" ]; then
+  fail "pyenv の Python $PYTHON_VERSION が見つかりません: $PYTHON_310\n  先に Step 3 の pyenv install を確認してください"
+fi
+
+# 既存 venv が Python 3.10 以外で作られている場合は作り直す
+if [ -d "$APPLIO_VENV" ]; then
+  VENV_PYTHON_VER=$("$APPLIO_VENV/bin/python" --version 2>&1 | awk '{print $2}')
+  if [[ "$VENV_PYTHON_VER" != 3.10* ]]; then
+    warn "Applio venv が Python $VENV_PYTHON_VER で作成されています。Python 3.10 で作り直します..."
+    rm -rf "$APPLIO_VENV"
+  fi
+fi
+
 if [ ! -d "$APPLIO_VENV" ]; then
-  python3 -m venv "$APPLIO_VENV"
-  log "Applio 用の仮想環境を作成しました"
+  "$PYTHON_310" -m venv "$APPLIO_VENV"
+  log "Applio 用の仮想環境を作成しました（Python $PYTHON_VERSION）"
 fi
 source "$APPLIO_VENV/bin/activate"
 pip install --upgrade pip -q
