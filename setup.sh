@@ -136,8 +136,21 @@ fi
 source "$APPLIO_VENV/bin/activate"
 pip install --upgrade pip -q
 
+# ---- torch は requirements.txt のバージョンピンを無視して個別インストール ----
+# Applio の requirements.txt が存在しないバージョン（例: torch==2.7.1）を
+# 指定している場合があるため、torch 系は先に Apple Silicon 対応の最新版を入れる
+warn "torch (Apple Silicon / MPS対応) をインストール中..."
+pip install torch torchaudio --quiet \
+  || warn "torch のインストールに問題がありました。続行します..."
+
+# requirements.txt から torch 系の行を除外してインストール
 if [ -f "requirements.txt" ]; then
-  pip install -r requirements.txt -q
+  warn "Applio の依存ライブラリをインストール中（torch 行はスキップ）..."
+  grep -v -E "^torch(vision|audio)?(==|>=|<=|~=|!=|>|<| )" requirements.txt \
+    > /tmp/applio_reqs_filtered.txt || true
+  pip install -r /tmp/applio_reqs_filtered.txt --quiet \
+    || warn "一部パッケージのインストールに警告が出ましたが続行します"
+  rm -f /tmp/applio_reqs_filtered.txt
   log "Applio の依存関係をインストールしました"
 fi
 deactivate
